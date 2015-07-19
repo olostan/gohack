@@ -1,14 +1,19 @@
 application: gohack
-version: 2
+version: 3
 runtime: go
 api_version: go1
 
 handlers:
 - url: /api/.*
   script: _go_app
+  login: required
+  auth_fail_action: unauthorized
 - url: /
   static_files: public/index.html
   upload: public/index.html
+  login: required
 - url: /(.*)
   static_files: public/\1
   upload: public/.*
+  login: required
+  auth_fail_action: unauthorized

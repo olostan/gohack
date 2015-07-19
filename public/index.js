@@ -31,6 +31,6 @@ input.addEventListener('keyup',  function(e) {
 });
 setTimeout(focusInput,100);
 
-fetch('/api/').then(function(r) {
+fetch('/api/',{credentials: 'same-origin'}).then(function(r) {
   return r.text();
 }).then(function(t) { addLine("Message from server:"+t);});
