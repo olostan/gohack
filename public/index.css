@@ -56,4 +56,6 @@ body {
   color: white;
   font-family: "Lucida Console", Monaco, monospace;
 }
-
+.item { color: #888;}
+.item .name { color: yellow;}
+.item .message { color: white;}
