@@ -60,9 +60,19 @@ input.addEventListener('keyup',  function(e) {
 
 });
 setTimeout(focusInput,100);
+
+function addMessage(message) {
+    addLine(message.When.getHours()+":"+message.When.getMinutes()+ " <span class='name'>"+message.Sender+"</span>: <span class='message'>"+message.Text+"</span>");
+}
+
 get('/api/user').then(function(r) {
   return r.text();
-}).then(function(t) { addLine("Message from server:"+t);});
+}).then(function(t) {
+    t = JSON.parse(t);
+    console.log(t);
+    addLine("Hello, "+t.User);
+    t.Messages.forEach(function(message) { message.When = new Date(message.When);addMessage(message);});
+});
 
 
 
@@ -90,7 +100,7 @@ function onMessage(m) {
     var message = JSON.parse(m.data);
     message.When = new Date(message.When);
     console.log(message);
-    addLine(message.When.getHours()+":"+message.When.getMinutes()+ " <span class='name'>"+message.Sender+"</span>: <span class='message'>"+message.Text+"</span>");
+    addMessage(message);
 }
 function onError() {
     addLine("Error in channel");

@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"appengine/datastore"
+	"encoding/json"
 )
 
 func init() {
@@ -16,11 +18,27 @@ func init() {
 	http.HandleFunc("/api/join", joinHandler)
 	http.HandleFunc("/api/message", messageHandler)
 }
-
+type InitialReply struct {
+	User string
+	Messages []Message
+}
 func userHandler(w http.ResponseWriter, r *http.Request) {
+
 	c := appengine.NewContext(r)
 	u := user.Current(c)
-	fmt.Fprintf(w, "Hello, %v!", u)
+	initial := InitialReply{u.String(),make([]Message, 0, 10)}
+
+	q := datastore.NewQuery("Message").Ancestor(channelKey(c)).Order("When").Limit(10)
+	if _, err := q.GetAll(c, &initial.Messages); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	res, err := json.Marshal(initial)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	fmt.Fprintf(w, string(res))
 }
 
 func joinHandler(w http.ResponseWriter, r *http.Request) {
@@ -40,18 +58,28 @@ func readBody(r *http.Request) (string, error) {
 func messageHandler(w http.ResponseWriter, r *http.Request) {
 	c := appengine.NewContext(r)
 	u := user.Current(c)
-	message, err := readBody(r)
-	message = html.EscapeString(message)
+	messageText, err := readBody(r)
+	messageText = html.EscapeString(messageText)
 	if err != nil {
 		http.Error(w, "Couldn't read message", http.StatusInternalServerError)
 		c.Errorf("Reading body: %v", err)
 		return
 	}
-	err = channel.SendJSON(c, "general", Message{u.String(), message, time.Now()})
+	message := Message{u.String(), messageText, time.Now()};
+	err = channel.SendJSON(c, "general", message)
 	if err != nil {
 		c.Errorf("sending Game: %v", err)
 	}
+	key := datastore.NewIncompleteKey(c, "Message", channelKey(c))
+	_, err = datastore.Put(c, key, &message)
+	if err != nil {
+		c.Errorf("Storage message: %v", err)
+	}
 	fmt.Fprintf(w, "Ok")
+}
+
+func channelKey(c appengine.Context) *datastore.Key {
+	return datastore.NewKey(c, "GoHack", "general", 0, nil)
 }
 
 type Message struct {
