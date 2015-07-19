@@ -88,8 +88,9 @@ function sanitize(txt) {
 }
 function onMessage(m) {
     var message = JSON.parse(m.data);
-    console.log(m);
-    addLine("<span class='name'>"+message.Sender+"</span>: <span class='message'>"+message.Text+"</span>");
+    message.When = new Date(message.When);
+    console.log(message);
+    addLine(message.When.getHours()+":"+message.When.getMinutes()+ " <span class='name'>"+message.Sender+"</span>: <span class='message'>"+message.Text+"</span>");
 }
 function onError() {
     addLine("Error in channel");
