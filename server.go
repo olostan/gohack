@@ -3,14 +3,14 @@ package gohack
 import (
 	"appengine"
 	"appengine/channel"
+	"appengine/datastore"
 	"appengine/user"
+	"encoding/json"
 	"fmt"
 	"html"
 	"io/ioutil"
 	"net/http"
 	"time"
-	"appengine/datastore"
-	"encoding/json"
 )
 
 func init() {
@@ -18,21 +18,30 @@ func init() {
 	http.HandleFunc("/api/join", joinHandler)
 	http.HandleFunc("/api/message", messageHandler)
 }
+
 type InitialReply struct {
-	User string
+	User     string
 	Messages []Message
 }
+
+func reverseMessages(a []Message) {
+	for left, right := 0, len(a)-1; left < right; left, right = left+1, right-1 {
+		a[left], a[right] = a[right], a[left]
+	}
+}
+
 func userHandler(w http.ResponseWriter, r *http.Request) {
 
 	c := appengine.NewContext(r)
 	u := user.Current(c)
-	initial := InitialReply{u.String(),make([]Message, 0, 10)}
+	initial := InitialReply{u.String(), make([]Message, 0, 10)}
 
-	q := datastore.NewQuery("Message").Ancestor(channelKey(c)).Order("When").Limit(10)
+	q := datastore.NewQuery("Message").Ancestor(channelKey(c)).Order("-When").Limit(10)
 	if _, err := q.GetAll(c, &initial.Messages); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	reverseMessages(initial.Messages)
 	res, err := json.Marshal(initial)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -65,7 +74,7 @@ func messageHandler(w http.ResponseWriter, r *http.Request) {
 		c.Errorf("Reading body: %v", err)
 		return
 	}
-	message := Message{u.String(), messageText, time.Now()};
+	message := Message{u.String(), messageText, time.Now()}
 	err = channel.SendJSON(c, "general", message)
 	if err != nil {
 		c.Errorf("sending Game: %v", err)
